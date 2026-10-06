@@ -16,23 +16,24 @@
       --card-bg: #1e1e1e;
       --text-main: #e0e0e0;
       --accent-color: #ff9800;
+      --border-color: #333;
     }
     
     body { 
       background-color: var(--bg-dark); 
       color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-      padding-bottom: 80px; 
+      padding-bottom: 90px; 
     }
 
-    .form-control {
+    .form-control, .form-select {
       background-color: #2a2a2a;
       border: 1px solid #444;
       color: #fff;
       padding: 12px;
       font-size: 1rem;
     }
-    .form-control:focus {
+    .form-control:focus, .form-select:focus {
       background-color: #333;
       color: #fff;
       border-color: var(--accent-color);
@@ -50,9 +51,22 @@
 
     .card {
       background-color: var(--card-bg);
-      border: 1px solid #333;
+      border: 1px solid var(--border-color);
       border-radius: 12px;
       color: var(--text-main);
+    }
+
+    .stat-card {
+      background-color: #252525;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #3d3d3d;
+    }
+    .stat-number {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: var(--accent-color);
     }
 
     .card-order { border-left: 6px solid #6c757d; margin-bottom: 15px; }
@@ -101,6 +115,16 @@
       color: var(--accent-color);
       border-top: 3px solid var(--accent-color);
       background-color: #252525;
+    }
+
+    .filter-btn {
+      font-size: 0.85rem;
+      padding: 6px 12px;
+    }
+    .filter-btn.active {
+      background-color: var(--accent-color);
+      color: #000;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -161,7 +185,9 @@
         <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Dugulás')">Dugulás</button>
         <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Folyik a víz')">Folyik a víz</button>
         <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Nem ad kávét')">Nem ad kávét</button>
+        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Vízkőtelenítés')">Vízkőtelenítés</button>
         <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Elektronika')">Elektronika</button>
+        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Hangos/Zajost')">Hangos/Zajos</button>
       </div>
       <div class="mb-3">
         <input type="text" id="customIssue" class="form-control" placeholder="✍️ Egyéb egyedi hiba...">
@@ -176,6 +202,7 @@
         <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Zaccfiók')">Zaccfiók</button>
         <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Tejfelszívó')">Tejfelszívó</button>
         <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'K-egység')">K-egység</button>
+        <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Kávébab fedél')">Kávébab fedél</button>
       </div>
 
       <div class="mb-3">
@@ -193,7 +220,41 @@
 
   <!-- LISTA TAB -->
   <div id="tab-list" class="tab-content" style="display:none;">
-    <div id="ordersContainer">Készülékek betöltése...</div>
+    
+    <!-- STATISZTIKA DOBOZOK -->
+    <div class="row g-2 mb-3">
+      <div class="col-4">
+        <div class="stat-card">
+          <div class="text-muted small">Folyamatban</div>
+          <div id="statActive" class="stat-number">0</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="stat-card">
+          <div class="text-muted small">Elkészült</div>
+          <div id="statReady" class="stat-number text-success">0</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="stat-card">
+          <div class="text-muted small">Lezárt</div>
+          <div id="statDone" class="stat-number text-secondary">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KERESŐ ÉS SZŰRŐ -->
+    <div class="card p-2 mb-3">
+      <input type="text" id="searchInput" class="form-control mb-2" placeholder="🔍 Keresés (név, típus, S/N, ID)..." onkeyup="filterOrders()">
+      <div class="d-flex gap-1 overflow-auto">
+        <button class="btn btn-outline-secondary filter-btn active" onclick="setFilter('ALL', this)">Összes</button>
+        <button class="btn btn-outline-secondary filter-btn" onclick="setFilter('Átvéve', this)">Átvéve</button>
+        <button class="btn btn-outline-secondary filter-btn" onclick="setFilter('Elkészült', this)">Elkészült</button>
+        <button class="btn btn-outline-secondary filter-btn" onclick="setFilter('Kiadva', this)">Kiadva</button>
+      </div>
+    </div>
+
+    <div id="ordersContainer">⏳ Gépek betöltése...</div>
   </div>
 </div>
 
@@ -211,11 +272,13 @@
 
 <script>
   // IDE MÁSOLD BE A GOOGLE APPS SCRIPT WEBAPP URL-JÉT:
-  const API_URL = const API_URL = "https://script.google.com/macros/s/AKfycbx...AKARMI/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbw19FfkwxPsMr-vx1PUB-QbNZcn6kwjIKPk_wQ_Q9rOxIQC81bJFg5gKaupMu1jfIcPHw/exec";
 
   let selectedIssues = [];
   let selectedMissingParts = [];
   let codeReader = null;
+  let allOrdersData = [];
+  let currentFilterStatus = 'ALL';
 
   function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
@@ -255,7 +318,7 @@
     document.getElementById('scannerModal').style.display = 'none';
   }
 
-  // 2. FOTÓ ALAPÚ SZÖVEGES OCR (HA NINCS VONALKÓD)
+  // 2. FOTÓ ALAPÚ SZÖVEGES OCR
   function processOCRImage(input) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
@@ -298,6 +361,11 @@
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   }
 
+  function generateSmsText(price) {
+    return `Szia! A szervizre leadott kávégéped elkészült és átvehető. Fizetendő végösszeg: ${price} Ft. Az átvétellel kapcsolatban egyeztetés szükséges. Üdvözlettel, Coffix`;
+  }
+
+  // 3. MUNKALAP MENTÉSE
   function submitWorkOrder() {
     let allIssues = [...selectedIssues];
     const customIssueVal = document.getElementById('customIssue').value.trim();
@@ -326,132 +394,127 @@
     fetch(API_URL, {
       method: 'POST',
       mode: 'cors',
-      redirect: 'follow',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8'
-      },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'saveOrder', payload: data })
     })
     .then(res => res.json())
     .then(res => {
-      alert("Sikeres mentés! Munkalapszám: " + res.id);
-      location.reload();
+      if(res.success) {
+        alert("Sikeres mentés! Munkalapszám: " + res.id);
+        location.reload();
+      } else {
+        alert("Hiba történt a mentés során: " + (res.error || "Ismeretlen hiba"));
+        document.getElementById('saveBtn').disabled = false;
+        document.getElementById('saveBtn').innerText = "💾 Munkalap Mentése";
+      }
     })
     .catch(err => {
       console.error(err);
-      alert("Hiba történt a mentés során.");
+      alert("Hiba a hálózati kapcsolatban.");
       document.getElementById('saveBtn').disabled = false;
       document.getElementById('saveBtn').innerText = "💾 Munkalap Mentése";
     });
   }
 
-  function generateSmsText(price) {
-    return `Szia! A szervizre leadott kávégéped elkészült és átvehető. Fizetendő végösszeg: ${price} Ft. Az átvétellel kapcsolatban egyeztetés szükséges. Üdvözlettel, Coffix`;
-  }
-
+  // 4. GÉPEK LISTÁJÁNAK BETÖLTÉSE (SZŰRÉSSEL ÉS STATISZTIKÁVAL)
   function loadOrders() {
-    document.getElementById('ordersContainer').innerHTML = "Készülékek betöltése...";
+    const container = document.getElementById('ordersContainer');
+    container.innerHTML = '<div class="text-center text-muted my-4">⏳ Adatok betöltése a táblázatból...</div>';
     document.getElementById('alertBanner').style.display = 'none';
 
-    fetch(API_URL + "?action=getOrders")
-    .then(res => res.json())
+    fetch(API_URL + "?action=getOrders", {
+      method: 'GET',
+      mode: 'cors',
+      redirect: 'follow'
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Hálózati hiba: " + res.status);
+      return res.json();
+    })
     .then(orders => {
-      let html = '';
-      let hasOverdueOrder = false;
+      allOrdersData = orders || [];
+      updateStatistics();
+      renderOrdersList();
+    })
+    .catch(err => {
+      console.error(err);
+      container.innerHTML = `<div class="alert alert-danger text-center">❌ Hiba történt az adatok betöltésekor.<br><small>${err.message}</small></div>`;
+    });
+  }
 
-      if (!orders || orders.length === 0) {
-        html = '<div class="alert alert-dark text-center">Nincs még rögzített gép.</div>';
-      } else {
-        orders.forEach(o => {
-          let days = calculateDaysInService(o.date);
-          let isOverdue = (o.status === 'Átvéve' && days >= 7);
+  function updateStatistics() {
+    let active = 0, ready = 0, done = 0;
+    allOrdersData.forEach(o => {
+      if (o.status === 'Átvéve') active++;
+      else if (o.status === 'Elkészült') ready++;
+      else if (o.status === 'Kiadva') done++;
+    });
+    document.getElementById('statActive').innerText = active;
+    document.getElementById('statReady').innerText = ready;
+    document.getElementById('statDone').innerText = done;
+  }
 
-          if (isOverdue) hasOverdueOrder = true;
+  function setFilter(status, btn) {
+    currentFilterStatus = status;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderOrdersList();
+  }
 
-          html += `
-            <div class="card p-3 shadow-sm card-order status-${o.status} ${isOverdue ? 'overdue-card' : ''}">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <h5 class="m-0 text-light"><strong>${o.id}</strong> - ${o.machineModel || 'Kávégép'}</h5>
-                <span class="badge bg-secondary">${o.status}</span>
-              </div>
-              
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <small class="text-muted">Beérkezett: ${o.date || '-'}</small>
-                <span class="badge ${days >= 7 && o.status === 'Átvéve' ? 'bg-danger' : 'bg-dark text-light'} border border-secondary">
-                  ⏱ ${days} napja
-                </span>
-              </div>
+  function filterOrders() {
+    renderOrdersList();
+  }
 
-              ${isOverdue ? `
-                <div class="alert alert-danger py-1 px-2 my-1 small fw-bold">
-                  ⚠️ Figyelem: Több mint 1 hete munkára vár!
-                </div>
-              ` : ''}
+  function renderOrdersList() {
+    const container = document.getElementById('ordersContainer');
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    let hasOverdueOrder = false;
 
-              <p class="mb-1"><strong>Ügyfél:</strong> ${o.clientName} (${o.clientPhone})</p>
-              <p class="mb-1 text-secondary"><strong>Hibák:</strong> ${o.issues || 'Nincs megadva'}</p>
-              ${o.missingParts ? `<p class="mb-1 text-danger"><strong>Hiányzik:</strong> ${o.missingParts}</p>` : ''}
-              ${o.maxBudget ? `<p class="mb-1 text-info"><strong>Max Keret:</strong> ${o.maxBudget} Ft</p>` : ''}
-              ${o.totalPrice ? `<p class="mb-1 text-success fw-bold"><strong>Végösszeg:</strong> ${o.totalPrice} Ft</p>` : ''}
-              
-              <div class="mt-3 d-flex flex-wrap gap-2">
-                ${o.status !== 'Elkészült' && o.status !== 'Kiadva' ? `
-                  <button class="btn btn-sm btn-success btn-custom flex-fill" onclick="markAsReady(${o.rowIndex}, '${o.clientPhone}')">✅ Elkészült + SMS</button>
-                ` : ''}
-                ${o.status === 'Elkészült' ? `
-                  <button class="btn btn-sm btn-secondary btn-custom flex-fill" onclick="markAsDone(${o.rowIndex})">📦 Kiadva / Lezárva</button>
-                  <a class="btn btn-sm btn-outline-success btn-custom flex-fill" href="sms:${o.clientPhone}?body=${encodeURIComponent(generateSmsText(o.totalPrice))}">📲 SMS Újra</a>
-                ` : ''}
-              </div>
+    let filtered = allOrdersData.filter(o => {
+      // Státusz szűrő
+      if (currentFilterStatus !== 'ALL' && o.status !== currentFilterStatus) return false;
+
+      // Kereső mező
+      if (searchTerm) {
+        const text = `${o.id} ${o.clientName} ${o.clientPhone} ${o.machineModel} ${o.serialNumber}`.toLowerCase();
+        return text.includes(searchTerm);
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="alert alert-dark text-center my-3">Nincs a feltételeknek megfelelő gép.</div>';
+      return;
+    }
+
+    let html = '';
+    filtered.forEach(o => {
+      let days = calculateDaysInService(o.date);
+      let isOverdue = (o.status === 'Átvéve' && days >= 7);
+
+      if (isOverdue) hasOverdueOrder = true;
+
+      html += `
+        <div class="card p-3 shadow-sm card-order status-${o.status} ${isOverdue ? 'overdue-card' : ''}">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <h5 class="m-0 text-light"><strong>${o.id}</strong> - ${o.machineModel || 'Kávégép'}</h5>
+            <span class="badge bg-secondary">${o.status}</span>
+          </div>
+          
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <small class="text-muted">Beérkezett: ${o.date || '-'}</small>
+            <span class="badge ${days >= 7 && o.status === 'Átvéve' ? 'bg-danger' : 'bg-dark text-light'} border border-secondary">
+              ⏱ ${days} napja
+            </span>
+          </div>
+
+          ${isOverdue ? `
+            <div class="alert alert-danger py-1 px-2 my-1 small fw-bold">
+              ⚠️ Figyelem: Több mint 1 hete munkára vár!
             </div>
-          `;
-        });
-      }
+          ` : ''}
 
-      if (hasOverdueOrder) {
-        document.getElementById('alertBanner').style.display = 'block';
-      }
-
-      document.getElementById('ordersContainer').innerHTML = html;
-    });
-  }
-
-  function markAsReady(rowIndex, phone) {
-    let price = prompt("Add meg a fizetendő végösszeget (Ft):");
-    if (price === null) return;
-
-    fetch(API_URL, {
-      method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8'
-      },
-      body: JSON.stringify({ action: 'updateStatus', payload: { rowIndex: rowIndex, status: 'Elkészült', totalPrice: price } })
-    })
-    .then(res => res.json())
-    .then(() => {
-      let msg = generateSmsText(price);
-      window.location.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
-      loadOrders();
-    });
-  }
-
-  function markAsDone(rowIndex) {
-    fetch(API_URL, {
-      method: 'POST',
-      mode: 'cors',
-      redirect: 'follow',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8'
-      },
-      body: JSON.stringify({ action: 'updateStatus', payload: { rowIndex: rowIndex, status: 'Kiadva' } })
-    })
-    .then(res => res.json())
-    .then(() => {
-      loadOrders();
-    });
-  }
-</script>
-</body>
-</html>
+          <p class="mb-1"><strong>Ügyfél:</strong> ${o.clientName} (${o.clientPhone})</p>
+          ${o.serialNumber ? `<p class="mb-1 text-muted small"><strong>S/N:</strong> ${o.serialNumber}</p>` : ''}
+          <p class="mb-1 text-secondary"><strong>Hibák:</strong> ${o.issues || 'Nincs megadva'}</p>
+          ${o.missingParts ? `<p class="mb-1 text-danger"><strong>Hi
