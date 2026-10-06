@@ -42,12 +42,35 @@
     .form-label { font-weight: 600; color: #bbb; margin-bottom: 4px; }
 
     .btn-custom {
-      padding: 12px 16px;
+      padding: 10px 14px;
       font-weight: 600;
       border-radius: 8px;
     }
-    .btn-toggle.active { background-color: #dc3545 !important; color: white !important; border-color: #dc3545 !important; }
-    .btn-issue.active { background-color: #0d6efd !important; color: white !important; border-color: #0d6efd !important; }
+
+    /* HIBA ÉS TARTOZÉK GOMBOK LÁTHATÓ KIJELÖLÉSE */
+    .btn-issue {
+      background-color: #2a2a2a !important;
+      color: #ccc !important;
+      border: 1px solid #555 !important;
+    }
+    .btn-issue.active {
+      background-color: #0d6efd !important; /* KÉK, ha ki van választva */
+      color: white !important;
+      border-color: #0d6efd !important;
+      font-weight: bold;
+    }
+
+    .btn-toggle {
+      background-color: #2a2a2a !important;
+      color: #ccc !important;
+      border: 1px solid #555 !important;
+    }
+    .btn-toggle.active {
+      background-color: #dc3545 !important; /* PIROS, ha hiányzik */
+      color: white !important;
+      border-color: #dc3545 !important;
+      font-weight: bold;
+    }
 
     .card {
       background-color: var(--card-bg);
@@ -75,7 +98,6 @@
     .status-Kiadva { border-left-color: #6c757d; }
     .overdue-card { border: 2px solid #dc3545 !important; border-left: 8px solid #dc3545 !important; background-color: #2a1515; }
 
-    /* Élő kamera ablak stílusok */
     #scannerModal {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -180,14 +202,14 @@
       <!-- HIBÁK -->
       <label class="form-label mb-2">🛠️ Hibajelenség / Kért Munka:</label>
       <div class="d-flex flex-wrap gap-2 mb-2">
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Karbantartás')">Karbantartás</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Daráló hiba')">Daráló hiba</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Dugulás')">Dugulás</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Folyik a víz')">Folyik a víz</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Nem ad kávét')">Nem ad kávét</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Vízkőtelenítés')">Vízkőtelenítés</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Elektronika')">Elektronika</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Hangos/Zajos')">Hangos/Zajos</button>
+        <button type="button" class="btn btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Karbantartás')">Karbantartás</button>
+        <button type="button" class="btn btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Daráló hiba')">Daráló hiba</button>
+        <button type="button" class="btn btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Dugulás')">Dugulás</button>
+        <button type="button" class="btn btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Folyik a víz')">Folyik a víz</button>
+        <button type="button" class="btn btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Nem ad kávét')">Nem ad kávét</button>
+        <button type="button" class="btn btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Vízkőtelenítés')">Vízkőtelenítés</button>
+        <button type="button" class="btn btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Elektronika')">Elektronika</button>
+        <button type="button" class="btn btn-custom btn-issue" onclick="toggleSelection(this, 'issues', 'Hangos/Zajos')">Hangos/Zajos</button>
       </div>
       <div class="mb-3">
         <input type="text" id="customIssue" class="form-control" placeholder="✍️ Egyéb egyedi hiba...">
@@ -196,13 +218,13 @@
       <!-- HIÁNYZÓ TARTOZÉKOK -->
       <label class="form-label mb-2 text-danger">❌ HIÁNYZÓ Tartozékok:</label>
       <div class="d-flex flex-wrap gap-2 mb-3">
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Víztartály')">Víztartály</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Víztartály fedél')">Víztartály fedél</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Csepptálca')">Csepptálca</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Zaccfiók')">Zaccfiók</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Tejfelszívó')">Tejfelszívó</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'K-egység')">K-egység</button>
-        <button type="button" class="btn btn-outline-secondary btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Kávébab fedél')">Kávébab fedél</button>
+        <button type="button" class="btn btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Víztartály')">Víztartály</button>
+        <button type="button" class="btn btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Víztartály fedél')">Víztartály fedél</button>
+        <button type="button" class="btn btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Csepptálca')">Csepptálca</button>
+        <button type="button" class="btn btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Zaccfiók')">Zaccfiók</button>
+        <button type="button" class="btn btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Tejfelszívó')">Tejfelszívó</button>
+        <button type="button" class="btn btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'K-egység')">K-egység</button>
+        <button type="button" class="btn btn-custom btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Kávébab fedél')">Kávébab fedél</button>
       </div>
 
       <div class="mb-3">
@@ -288,11 +310,16 @@
     document.getElementById('nav-' + tabName).classList.add('active');
   }
 
+  // GOMBOK KIJELÖLÉSE ÉS BEÁLLÍTÁSA
   function toggleSelection(btn, type, value) {
     btn.classList.toggle('active');
     let list = type === 'issues' ? selectedIssues : selectedMissingParts;
     let index = list.indexOf(value);
-    if (index > -1) { list.splice(index, 1); } else { list.push(value); }
+    if (index > -1) { 
+      list.splice(index, 1); 
+    } else { 
+      list.push(value); 
+    }
   }
 
   // 1. ÉLŐ KAMERÁS VONALKÓD SZKENNER
