@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <title>Coffix Szerviz Munkalap</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    body { background-color: #f4f6f9; font-family: sans-serif; padding-bottom: 30px; }
+    .btn-toggle.active { background-color: #dc3545 !important; color: white !important; border-color: #dc3545 !important; }
+    .btn-issue.active { background-color: #0d6efd !important; color: white !important; border-color: #0d6efd !important; }
+    .card-order { border-left: 5px solid #6c757d; margin-bottom: 15px; }
+    .status-Atveve { border-left-color: #ffc107; }
+    .status-Elkeszult { border-left-color: #198754; }
+    .status-Kiadva { border-left-color: #6c757d; }
+  </style>
+</head>
+<body>
+
+<div class="container py-3">
+  <h3 class="text-center mb-3">☕ Coffix Szerviz Munkalap</h3>
+
+  <!-- Navigációs gombok -->
+  <div class="d-flex justify-content-center gap-2 mb-3">
+    <button class="btn btn-primary flex-fill" onclick="showTab('new')">➕ Új Átvétel</button>
+    <button class="btn btn-outline-dark flex-fill" onclick="showTab('list'); loadOrders();">📋 Gépek Listája</button>
+  </div>
+
+  <!-- ÚJ ÁTVÉTEL TAB -->
+  <div id="tab-new" class="tab-content">
+    <div class="card p-3 shadow-sm">
+      <h5 class="card-title mb-3">Ügyfél & Gép Adatai</h5>
+      
+      <div class="mb-2">
+        <label class="form-label font-weight-bold">Ügyfél Neve *</label>
+        <input type="text" id="clientName" class="form-control" placeholder="Kovács Péter">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Telefonszám *</label>
+        <input type="tel" id="clientPhone" class="form-control" placeholder="+36301234567">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Gép Márka / Típus</label>
+        <input type="text" id="machineModel" class="form-control" placeholder="pl. Saeco Lirika / DeLonghi Magnifica">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Gyári szám (S/N)</label>
+        <input type="text" id="serialNumber" class="form-control" placeholder="Gép aljáról / hátuljáról">
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Gép Színe / Állapota</label>
+        <input type="text" id="colorCondition" class="form-control" placeholder="pl. Fekete, karcos tető">
+      </div>
+
+      <hr>
+
+      <!-- HIBÁK / KÉRT MUNKA -->
+      <h6>🛠️ Hibajelenség / Kért Munka (Bökj rá!):</h6>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <button type="button" class="btn btn-outline-primary btn-issue" onclick="toggleSelection(this, 'issues', 'Általános karbantartás')">Karbantartás</button>
+        <button type="button" class="btn btn-outline-primary btn-issue" onclick="toggleSelection(this, 'issues', 'Daráló hiba')">Daráló hiba</button>
+        <button type="button" class="btn btn-outline-primary btn-issue" onclick="toggleSelection(this, 'issues', 'Dugulás')">Dugulás</button>
+        <button type="button" class="btn btn-outline-primary btn-issue" onclick="toggleSelection(this, 'issues', 'Folyik a víz')">Folyik a víz</button>
+        <button type="button" class="btn btn-outline-primary btn-issue" onclick="toggleSelection(this, 'issues', 'Nem ad kávét')">Nem ad kávét</button>
+        <button type="button" class="btn btn-outline-primary btn-issue" onclick="toggleSelection(this, 'issues', 'Elektronika / Hibaüzenet')">Elektronika</button>
+      </div>
+
+      <!-- HIÁNYZÓ TARTOZÉKOK (INVERTÁLT) -->
+      <h6>❌ HIÁNYZÓ Tartozékok (Csak arra bökj, ami HIÁNYZIK!):</h6>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <button type="button" class="btn btn-outline-danger btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Víztartály')">Hiányzik: Víztartály</button>
+        <button type="button" class="btn btn-outline-danger btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Víztartály fedél')">Hiányzik: Víztartály fedél</button>
+        <button type="button" class="btn btn-outline-danger btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Csepptálca / Rács')">Hiányzik: Csepptálca</button>
+        <button type="button" class="btn btn-outline-danger btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Zaccfiók')">Hiányzik: Zaccfiók</button>
+        <button type="button" class="btn btn-outline-danger btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Tejfelszívó cső/kancsó')">Hiányzik: Tejfelszívó</button>
+        <button type="button" class="btn btn-outline-danger btn-toggle" onclick="toggleSelection(this, 'missingParts', 'K-egység')">Hiányzik: K-egység</button>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Max. Költségkeret (Ft)</label>
+        <input type="number" id="maxBudget" class="form-control" placeholder="pl. 25000">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Műhely Jegyzet (Belső)</label>
+        <textarea id="internalNotes" class="form-control" rows="2" placeholder="Saját megjegyzés magadnak..."></textarea>
+      </div>
+
+      <button class="btn btn-success btn-lg w-100" onclick="submitWorkOrder()">💾 Munkalap Mentése</button>
+    </div>
+  </div>
+
+  <!-- LISTA TAB -->
+  <div id="tab-list" class="tab-content" style="display:none;">
+    <div id="ordersContainer">Készülékek betöltése...</div>
+  </div>
+</div>
+
+<script>
+  let selectedIssues = [];
+  let selectedMissingParts = [];
+
+  function showTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.getElementById('tab-' + tabName).style.display = 'block';
+  }
+
+  function toggleSelection(btn, type, value) {
+    btn.classList.toggle('active');
+    let list = type === 'issues' ? selectedIssues : selectedMissingParts;
+    let index = list.indexOf(value);
+    if (index > -1) { list.splice(index, 1); } else { list.push(value); }
+  }
+
+  function submitWorkOrder() {
+    const data = {
+      clientName: document.getElementById('clientName').value,
+      clientPhone: document.getElementById('clientPhone').value,
+      machineModel: document.getElementById('machineModel').value,
+      serialNumber: document.getElementById('serialNumber').value,
+      colorCondition: document.getElementById('colorCondition').value,
+      issues: selectedIssues,
+      missingParts: selectedMissingParts,
+      maxBudget: document.getElementById('maxBudget').value,
+      internalNotes: document.getElementById('internalNotes').value
+    };
+
+    if (!data.clientName || !data.clientPhone) {
+      alert("Kérlek add meg az Ügyfél nevét és telefonszámát!");
+      return;
+    }
+
+    google.script.run.withSuccessHandler(res => {
+      alert("Sikeres mentés! Munkalapszám: " + res.id);
+      location.reload();
+    }).saveWorkOrder(data);
+  }
+
+  function generateSmsText(price) {
+    return `Szia! A szervizre leadott kávégéped elkészült és átvehető. Fizetendő végösszeg: ${price} Ft. Az átvétellel kapcsolatban egyeztetés szükséges. Üdvözlettel, Coffix`;
+  }
+
+  function loadOrders() {
+    google.script.run.withSuccessHandler(orders => {
+      let html = '';
+      if (orders.length === 0) {
+        html = '<div class="alert alert-info">Nincs még rögzített gép.</div>';
+      } else {
+        orders.forEach(o => {
+          html += `
+            <div class="card p-3 shadow-sm card-order status-${o.status}">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5><strong>${o.id}</strong> - ${o.machineModel || 'Kávégép'}</h5>
+                <span class="badge bg-secondary">${o.status}</span>
+              </div>
+              <p class="mb-1"><strong>Ügyfél:</strong> ${o.clientName} (${o.clientPhone})</p>
+              <p class="mb-1"><strong>Hibák:</strong> ${o.issues || 'Nincs megadva'}</p>
+              ${o.missingParts ? `<p class="mb-1 text-danger"><strong>Hiányzik:</strong> ${o.missingParts}</p>` : ''}
+              ${o.totalPrice ? `<p class="mb-1 text-success"><strong>Végösszeg:</strong> ${o.totalPrice} Ft</p>` : ''}
+              
+              <div class="mt-2 d-flex flex-wrap gap-2">
+                ${o.status !== 'Elkészült' && o.status !== 'Kiadva' ? `
+                  <button class="btn btn-sm btn-success" onclick="markAsReady(${o.rowIndex}, '${o.clientPhone}')">✅ Elkészült + SMS</button>
+                ` : ''}
+                ${o.status === 'Elkészült' ? `
+                  <button class="btn btn-sm btn-secondary" onclick="markAsDone(${o.rowIndex})">📦 Kiadva / Lezárva</button>
+                  <a class="btn btn-sm btn-outline-success" href="sms:${o.clientPhone}?body=${encodeURIComponent(generateSmsText(o.totalPrice))}">📲 SMS Küldése Újra</a>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        });
+      }
+      document.getElementById('ordersContainer').innerHTML = html;
+    }).getWorkOrders();
+  }
+
+  function markAsReady(rowIndex, phone) {
+    let price = prompt("Add meg a fizetendő végösszeget (Ft):");
+    if (price === null) return;
+
+    google.script.run.withSuccessHandler(() => {
+      let msg = generateSmsText(price);
+      window.location.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
+      loadOrders();
+    }).updateOrderStatus(rowIndex, 'Elkészült', price, '');
+  }
+
+  function markAsDone(rowIndex) {
+    google.script.run.withSuccessHandler(() => {
+      loadOrders();
+    }).updateOrderStatus(rowIndex, 'Kiadva', '', '');
+  }
+</script>
+</body>
+</html>
