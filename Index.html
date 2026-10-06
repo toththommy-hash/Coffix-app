@@ -2,6 +2,7 @@
 <html lang="hu">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>Coffix Szerviz Munkalap</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
@@ -12,6 +13,7 @@
     .status-Atveve { border-left-color: #ffc107; }
     .status-Elkeszult { border-left-color: #198754; }
     .status-Kiadva { border-left-color: #6c757d; }
+    .overdue-card { border: 2px solid #dc3545 !important; border-left: 8px solid #dc3545 !important; background-color: #fff8f8; }
   </style>
 </head>
 <body>
@@ -19,7 +21,11 @@
 <div class="container py-3">
   <h3 class="text-center mb-3">☕ Coffix Szerviz Munkalap</h3>
 
-  <!-- Navigációs gombok -->
+  <!-- RIASZTÁSI SÁV A CSÚSZÁSBAN LÉVŐ GÉPEKNEK -->
+  <div id="alertBanner" style="display:none;" class="alert alert-danger text-center font-weight-bold shadow-sm mb-3">
+    ⚠️ <strong>Figyelem!</strong> Van olyan kávégép, ami több mint 1 hete vár javításra!
+  </div>
+
   <div class="d-flex justify-content-center gap-2 mb-3">
     <button class="btn btn-primary flex-fill" onclick="showTab('new')">➕ Új Átvétel</button>
     <button class="btn btn-outline-dark flex-fill" onclick="showTab('list'); loadOrders();">📋 Gépek Listája</button>
@@ -53,7 +59,6 @@
 
       <hr>
 
-      <!-- HIBÁK / KÉRT MUNKA -->
       <h6>🛠️ Hibajelenség / Kért Munka (Bökj rá!):</h6>
       <div class="d-flex flex-wrap gap-2 mb-3">
         <button type="button" class="btn btn-outline-primary btn-issue" onclick="toggleSelection(this, 'issues', 'Általános karbantartás')">Karbantartás</button>
@@ -64,7 +69,6 @@
         <button type="button" class="btn btn-outline-primary btn-issue" onclick="toggleSelection(this, 'issues', 'Elektronika / Hibaüzenet')">Elektronika</button>
       </div>
 
-      <!-- HIÁNYZÓ TARTOZÉKOK (INVERTÁLT) -->
       <h6>❌ HIÁNYZÓ Tartozékok (Csak arra bökj, ami HIÁNYZIK!):</h6>
       <div class="d-flex flex-wrap gap-2 mb-3">
         <button type="button" class="btn btn-outline-danger btn-toggle" onclick="toggleSelection(this, 'missingParts', 'Víztartály')">Hiányzik: Víztartály</button>
@@ -84,7 +88,7 @@
         <textarea id="internalNotes" class="form-control" rows="2" placeholder="Saját megjegyzés magadnak..."></textarea>
       </div>
 
-      <button class="btn btn-success btn-lg w-100" onclick="submitWorkOrder()">💾 Munkalap Mentése</button>
+      <button id="saveBtn" class="btn btn-success btn-lg w-100" onclick="submitWorkOrder()">💾 Munkalap Mentése</button>
     </div>
   </div>
 
@@ -95,6 +99,9 @@
 </div>
 
 <script>
+  // IDE MÁSOLD BE A GOOGLE APPS SCRIPT WEBAPP URL-JÉT:
+  const API_URL = "https://script.google.com/macros/s/AKfycbzwO9nIqAd3wGWUenGCiV5sNVUZqEnLZpI70Uza4J-HLFrKlalRaj0tFgV178VGVHZwqw/exec";
+
   let selectedIssues = [];
   let selectedMissingParts = [];
 
@@ -108,6 +115,17 @@
     let list = type === 'issues' ? selectedIssues : selectedMissingParts;
     let index = list.indexOf(value);
     if (index > -1) { list.splice(index, 1); } else { list.push(value); }
+  }
+
+  function calculateDaysInService(dateString) {
+    if (!dateString) return 0;
+    // Dátum formátum feltételezés: "YYYY.MM.DD HH:mm" vagy normál Date sztring
+    let cleanDateStr = dateString.toString().replace(/\./g, '-');
+    let orderDate = new Date(cleanDateStr);
+    if (isNaN(orderDate.getTime())) return 0;
+    
+    let diffTime = Math.abs(new Date() - orderDate);
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   }
 
   function submitWorkOrder() {
@@ -128,10 +146,23 @@
       return;
     }
 
-    google.script.run.withSuccessHandler(res => {
+    document.getElementById('saveBtn').disabled = true;
+    document.getElementById('saveBtn').innerText = "Mentés folyamatban...";
+
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'saveOrder', payload: data })
+    })
+    .then(res => res.json())
+    .then(res => {
       alert("Sikeres mentés! Munkalapszám: " + res.id);
       location.reload();
-    }).saveWorkOrder(data);
+    })
+    .catch(err => {
+      alert("Hiba történt a mentés során.");
+      document.getElementById('saveBtn').disabled = false;
+      document.getElementById('saveBtn').innerText = "💾 Munkalap Mentése";
+    });
   }
 
   function generateSmsText(price) {
@@ -139,21 +170,50 @@
   }
 
   function loadOrders() {
-    google.script.run.withSuccessHandler(orders => {
+    document.getElementById('ordersContainer').innerHTML = "Készülékek betöltése...";
+    document.getElementById('alertBanner').style.display = 'none';
+
+    fetch(API_URL + "?action=getOrders")
+    .then(res => res.json())
+    .then(orders => {
       let html = '';
-      if (orders.length === 0) {
+      let hasOverdueOrder = false;
+
+      if (!orders || orders.length === 0) {
         html = '<div class="alert alert-info">Nincs még rögzített gép.</div>';
       } else {
         orders.forEach(o => {
+          let days = calculateDaysInService(o.date);
+          let isOverdue = (o.status === 'Átvéve' && days >= 7);
+
+          if (isOverdue) {
+            hasOverdueOrder = true;
+          }
+
           html += `
-            <div class="card p-3 shadow-sm card-order status-${o.status}">
+            <div class="card p-3 shadow-sm card-order status-${o.status} ${isOverdue ? 'overdue-card' : ''}">
               <div class="d-flex justify-content-between align-items-center">
                 <h5><strong>${o.id}</strong> - ${o.machineModel || 'Kávégép'}</h5>
                 <span class="badge bg-secondary">${o.status}</span>
               </div>
+              
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <small class="text-muted">Beérkezett: ${o.date || '-'}</small>
+                <span class="badge ${days >= 7 && o.status === 'Átvéve' ? 'bg-danger' : 'bg-light text-dark'} border">
+                  ⏱️ ${days} napja szervizben
+                </span>
+              </div>
+
+              ${isOverdue ? `
+                <div class="alert alert-danger py-1 px-2 my-1 small fw-bold">
+                  ⚠️ Figyelem: Több mint 1 hete munkára vár!
+                </div>
+              ` : ''}
+
               <p class="mb-1"><strong>Ügyfél:</strong> ${o.clientName} (${o.clientPhone})</p>
               <p class="mb-1"><strong>Hibák:</strong> ${o.issues || 'Nincs megadva'}</p>
               ${o.missingParts ? `<p class="mb-1 text-danger"><strong>Hiányzik:</strong> ${o.missingParts}</p>` : ''}
+              ${o.maxBudget ? `<p class="mb-1 text-primary"><strong>Max Keret:</strong> ${o.maxBudget} Ft</p>` : ''}
               ${o.totalPrice ? `<p class="mb-1 text-success"><strong>Végösszeg:</strong> ${o.totalPrice} Ft</p>` : ''}
               
               <div class="mt-2 d-flex flex-wrap gap-2">
@@ -169,25 +229,40 @@
           `;
         });
       }
+
+      if (hasOverdueOrder) {
+        document.getElementById('alertBanner').style.display = 'block';
+      }
+
       document.getElementById('ordersContainer').innerHTML = html;
-    }).getWorkOrders();
+    });
   }
 
   function markAsReady(rowIndex, phone) {
     let price = prompt("Add meg a fizetendő végösszeget (Ft):");
     if (price === null) return;
 
-    google.script.run.withSuccessHandler(() => {
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'updateStatus', payload: { rowIndex: rowIndex, status: 'Elkészült', totalPrice: price } })
+    })
+    .then(res => res.json())
+    .then(() => {
       let msg = generateSmsText(price);
       window.location.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
       loadOrders();
-    }).updateOrderStatus(rowIndex, 'Elkészült', price, '');
+    });
   }
 
   function markAsDone(rowIndex) {
-    google.script.run.withSuccessHandler(() => {
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'updateStatus', payload: { rowIndex: rowIndex, status: 'Kiadva' } })
+    })
+    .then(res => res.json())
+    .then(() => {
       loadOrders();
-    }).updateOrderStatus(rowIndex, 'Kiadva', '', '');
+    });
   }
 </script>
 </body>
