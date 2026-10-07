@@ -709,25 +709,21 @@ function loadOrders() {
   }
 
 function markAsReady(rowIndex, phone) {
-    // 1. Bekérjük a végösszeget (vagy ha van modal/input meződ, kiolvassuk)
     let priceInput = document.getElementById('finalPriceInput') || document.getElementById('priceInput');
     let price = priceInput ? priceInput.value : prompt("Add meg a végösszeget (Ft):", "0");
 
-    if (price === null) return; // Ha a 'Mégse' gombra nyomott
+    if (price === null) return;
 
     const finalPrice = Number(price) || 0;
 
-    // BIZTONSÁGI PAYLOAD: Az összes lehetséges paraméternevet elküldjük
     const payload = {
-        action: 'updateStatus',  // Vagy updateOrder / completeOrder
+        action: 'updateStatus',
         rowIndex: rowIndex,
         id: rowIndex,
         row: rowIndex,
         munkalapId: rowIndex,
-        
         status: 'Elkészült',
         statusz: 'Elkészült',
-        
         totalPrice: finalPrice,
         vegosszeg: finalPrice,
         osszeg: finalPrice
@@ -743,24 +739,30 @@ function markAsReady(rowIndex, phone) {
     })
     .then(res => res.json())
     .then(result => {
-        alert("Munkalap sikeresen átállítva 'Elkészült' státuszra!");
+        alert("Munkalap átállítva 'Elkészült' státuszra!");
 
-        // Ha van felugró ablak (Modal), bezárjuk
+        // Felugró ablak bezárása
         const modalEl = document.getElementById('priceModal') || document.getElementById('doneModal');
         if (modalEl && typeof bootstrap !== 'undefined') {
             const modalInstance = bootstrap.Modal.getInstance(modalEl);
             if (modalInstance) modalInstance.hide();
         }
 
-        // Kártyák újratöltése
+        // Kártyák és adatok újratöltése a képernyőn
         if (typeof loadOrders === 'function') {
             loadOrders();
         }
 
-        // SMS indítása ha van telefonszám
+        // SMS kezelése: Mobilon megnyitja az SMS appot, PC-n pedig nem dob hibát
         if (phone && phone !== 'undefined') {
             const smsText = `Tisztelt Ügyfelünk! A szervizre leadott gép elkészült. Fizetendő végösszeg: ${finalPrice} Ft. Coffix Szerviz`;
-            window.location.href = `sms:${phone}?body=${encodeURIComponent(smsText)}`;
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                window.location.href = `sms:${phone}?body=${encodeURIComponent(smsText)}`;
+            } else {
+                console.log("PC-s nézet: Az SMS link mobilon nyílna meg. Szöveg:", smsText);
+            }
         }
     })
     .catch(err => {
@@ -768,7 +770,6 @@ function markAsReady(rowIndex, phone) {
         alert("Hiba történt a mentés során: " + err.message);
     });
 }
-
   function markAsDone(rowIndex) {
     fetch(API_URL, {
       method: 'POST',
