@@ -444,51 +444,55 @@
     });
   }
 
-  // 4. GÉPEK LISTÁJÁNAK BETÖLTÉSE (SZŰRÉSSEL ÉS STATISZTIKÁVAL)
-  function loadOrders() {
+// 4. GÉPEK LISTÁJÁNAK BETÖLTÉSE (SZŰRÉSSEL ÉS STATISZTIKÁVAL)
+function loadOrders() {
     const container = document.getElementById('ordersContainer');
-    container.innerHTML = '<div class="text-center text-muted my-4">⏳ Adatok betöltése a táblázatból...</div>';
-    document.getElementById('alertBanner').style.display = 'none';
+    if (container) {
+        container.innerHTML = '<div class="text-center text-muted my-4">⏳ Adatok betöltése a táblázatból...</div>';
+    }
+    
+    const banner = document.getElementById('alertBanner');
+    if (banner) banner.style.display = 'none';
 
     fetch(API_URL + "?action=getOrders", {
-      method: 'GET',
-      mode: 'cors',
-      redirect: 'follow'
+        method: 'GET',
+        mode: 'cors',
+        redirect: 'follow'
     })
     .then(res => {
-      if (!res.ok) throw new Error("Hálózati hiba: " + res.status);
-      return res.json();
+        if (!res.ok) throw new Error("Hálózati hiba: " + res.status);
+        return res.json();
     })
-    // ✅ ERRE ÍRD ÁT:
-.then(orders => {
-    const rawRows = (orders && orders.data) ? orders.data : [];
-    
-    allOrdersData = rawRows.slice(1).map((row, index) => ({
-        rowIndex: index + 2,
-        id: row[0] || '',
-        date: row[1] || '',
-        clientName: row[2] || '',
-        clientPhone: row[3] || '',
-        machineType: row[4] || '',
-        serialNumber: row[5] || '',
-        condition: row[6] || '',
-        issues: row[7] || '',
-        missingParts: row[8] || '',
-        maxBudget: row[9] || 0,
-        status: row[10] || 'Átvéve',
-        totalPrice: row[11] || 0,
-        internalNotes: row[12] || ''
-    }));
+    .then(orders => {
+        const rawRows = (orders && orders.data) ? orders.data : [];
+        
+        allOrdersData = rawRows.slice(1).map((row, index) => ({
+            rowIndex: index + 2,
+            id: row[0] || '',
+            date: row[1] || '',
+            clientName: row[2] || '',
+            clientPhone: row[3] || '',
+            machineType: row[4] || '',
+            serialNumber: row[5] || '',
+            condition: row[6] || '',
+            issues: row[7] || '',
+            missingParts: row[8] || '',
+            maxBudget: row[9] || 0,
+            status: row[10] || 'Átvéve',
+            totalPrice: row[11] || 0,
+            internalNotes: row[12] || ''
+        }));
 
-    updateStatistics();
-    renderOrdersList();
-})
+        updateStatistics();
+        renderOrdersList();
     })
     .catch(err => {
-      console.error(err);
-      container.innerHTML = `<div class="alert alert-danger text-center">❌ Hiba történt az adatok betöltésekor.<br><small>${err.message}</small></div>`;
+        console.error(err);
+        if (container) {
+            container.innerHTML = `<div class="alert alert-danger text-center">❌ Hiba történt az adatok betöltésekor.<br><small>${err.message}</small></div>`;
+        }
     });
-  }
+}
 
   function updateStatistics() {
     let active = 0, ready = 0, done = 0;
