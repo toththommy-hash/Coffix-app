@@ -401,55 +401,101 @@ function submitWorkOrder() {
         saveBtn.innerText = "⏳ Mentés...";
     }
 
-    // Segédfüggvény: megkeresi az beviteli mezőt bármilyen lehetséges ID alapján
-    const getValue = (ids) => {
+    // Segédfüggvény egyetlen mező értékének beolvasására
+    const getVal = (ids) => {
         for (let id of ids) {
-            const el = document.getElementById(id);
-            if (el && el.value !== undefined && el.value !== '') {
+            const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
+            if (el && el.value !== undefined && el.value.trim() !== '') {
                 return el.value.trim();
             }
         }
         return '';
     };
 
-    // Adatok kinyerése a HTML űrlapból (minden lehetséges meglévő ID-ra felkészülve)
-    const name = getValue(['clientName', 'ugyfelNev', 'inputClientName', 'name']);
-    const phone = getValue(['clientPhone', 'telefonszam', 'inputClientPhone', 'phone']);
-    const type = getValue(['machineType', 'markaTipus', 'inputMachineType', 'type']);
-    const sn = getValue(['serialNumber', 'gyariSzam', 'inputSerialNumber', 'sn']);
-    const cond = getValue(['condition', 'szinAllapot', 'inputCondition']);
-    const issues = getValue(['issues', 'hibatipusok', 'inputIssues', 'hiba']);
-    const missing = getValue(['missingParts', 'hianyzoTartozekok', 'inputMissingParts']);
-    const budget = getValue(['maxBudget', 'maxKeret', 'inputMaxBudget']) || 0;
-    const notes = getValue(['internalNotes', 'muhelyJegyzet', 'inputInternalNotes', 'jegyzet']);
+    // Segédfüggvény két külön mező összefűzésére (pl. Márka + Típus vagy Szín + Állapot)
+    const getCombined = (primaryIds, fallbackPart1Ids, fallbackPart2Ids) => {
+        const direct = getVal(primaryIds);
+        if (direct) return direct;
+        
+        const part1 = getVal(fallbackPart1Ids);
+        const part2 = getVal(fallbackPart2Ids);
+        if (part1 || part2) {
+            return [part1, part2].filter(Boolean).join(' ');
+        }
+        return '';
+    };
 
-    // BIZTONSÁGI PAYLOAD: elküldjük angolul ÉS magyarul is
+    // 1. Ügyfél neve
+    const name = getVal(['clientName', 'ugyfelNev', 'inputClientName', 'name', 'ugyfel_nev']);
+
+    // 2. Telefonszám
+    const phone = getVal(['clientPhone', 'telefonszam', 'inputClientPhone', 'phone', 'telefon']);
+
+    // 3. Márka / Típus (egyszerre vagy külön mezőkből: pl. marka + tipus)
+    const type = getCombined(
+        ['machineType', 'markaTipus', 'inputMachineType', 'type', 'gepTipus', 'marka_tipus'],
+        ['marka', 'inputMarka', 'brand'],
+        ['tipus', 'inputTipus', 'model']
+    );
+
+    // 4. Gyári szám (S/N)
+    const sn = getVal(['serialNumber', 'gyariSzam', 'inputSerialNumber', 'sn', 'serial', 'gyariszam']);
+
+    // 5. Szín / Állapot (egyszerre vagy külön: pl. szin + allapot)
+    const cond = getCombined(
+        ['condition', 'szinAllapot', 'inputCondition', 'allapot', 'szin_allapot'],
+        ['szin', 'inputSzin', 'color'],
+        ['allapot', 'inputAllapot', 'state']
+    );
+
+    // 6. Hibatípusok / Hibajelenség
+    const issues = getVal(['issues', 'hibatipusok', 'inputIssues', 'hibajelenseg', 'hiba', 'hibak', 'kertMunka']);
+
+    // 7. Hiányzó tartozékok
+    const missing = getVal(['missingParts', 'hianyzoTartozekok', 'inputMissingParts', 'hianyzo', 'tartozekok', 'tartozek']);
+
+    // 8. Max keret
+    const budget = getVal(['maxBudget', 'maxKeret', 'inputMaxBudget', 'keret', 'budget']) || 0;
+
+    // 9. Műhely jegyzet
+    const notes = getVal(['internalNotes', 'muhelyJegyzet', 'inputInternalNotes', 'jegyzet', 'notes', 'muhely_jegyzet']);
+
+    // BIZTONSÁGI PAYLOAD: Az összes lehetséges kulcsnév-változatot elküldjük a Google Apps Scriptnek
     const payload = {
         action: 'addOrder',
         
-        // Angol kulcsok:
-        clientName: name,
-        clientPhone: phone,
-        machineType: type,
-        serialNumber: sn,
-        condition: cond,
-        issues: issues,
-        missingParts: missing,
-        maxBudget: Number(budget),
-        internalNotes: notes,
-        status: 'Átvéve',
-
-        // Magyar kulcsok (a Google Apps Script háttérhez):
-        ugyfelNev: name,
-        telefonszam: phone,
-        markaTipus: type,
-        gyariSzam: sn,
-        szinAllapot: cond,
-        hibatipusok: issues,
-        hianyzoTartozekok: missing,
-        maxKeret: Number(budget),
-        muhelyJegyzet: notes,
-        statusz: 'Átvéve'
+        // Ügyfél neve (C oszlop)
+        clientName: name, ugyfelNev: name, ugyfel_nev: name, nev: name,
+        
+        // Telefonszám (D oszlop)
+        clientPhone: phone, telefonszam: phone, telefon: phone,
+        
+        // Márka / Típus (E oszlop)
+        machineType: type, markaTipus: type, marka_tipus: type, marka: type, tipus: type,
+        
+        // Gyári szám (F oszlop)
+        serialNumber: sn, gyariSzam: sn, gyariszam: sn, sn: sn,
+        
+        // Szín / Állapot (G oszlop)
+        condition: cond, szinAllapot: cond, szin_allapot: cond, allapot: cond, szin: cond,
+        
+        // Hibatípusok (H oszlop)
+        issues: issues, hibatipusok: issues, hiba: issues, hibak: issues, hibajelenseg: issues,
+        
+        // Hiányzó tartozékok (I oszlop)
+        missingParts: missing, hianyzoTartozekok: missing, hianyzo_tartozekok: missing, hianyzo: missing, tartozekok: missing,
+        
+        // Max keret (J oszlop)
+        maxBudget: Number(budget), maxKeret: Number(budget), max_keret: Number(budget), keret: Number(budget),
+        
+        // Státusz (K oszlop)
+        status: 'Átvéve', statusz: 'Átvéve',
+        
+        // Végösszeg (L oszlop)
+        totalPrice: 0, vegosszeg: 0,
+        
+        // Műhely jegyzet (M oszlop)
+        internalNotes: notes, muhelyJegyzet: notes, muhely_jegyzet: notes, jegyzet: notes
     };
 
     fetch(API_URL, {
@@ -462,11 +508,9 @@ function submitWorkOrder() {
     .then(result => {
         alert("Munkalap sikeresen elmentve!");
         
-        // Űrlap kiürítése mentés után
         const form = document.getElementById('workOrderForm') || document.getElementById('addOrderForm') || document.querySelector('form');
         if (form) form.reset();
 
-        // Munkalap lista azonnali frissítése
         if (typeof loadOrders === 'function') loadOrders();
     })
     .catch(err => {
