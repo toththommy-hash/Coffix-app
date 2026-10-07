@@ -394,56 +394,92 @@
   }
 
   // 3. MUNKALAP MENTÉSE
-  function submitWorkOrder() {
-    let allIssues = [...selectedIssues];
-    const customIssueVal = document.getElementById('customIssue').value.trim();
-    if (customIssueVal) allIssues.push(customIssueVal);
-
-    const data = {
-      clientName: document.getElementById('clientName').value,
-      clientPhone: document.getElementById('clientPhone').value,
-      machineModel: document.getElementById('machineModel').value,
-      serialNumber: document.getElementById('serialNumber').value,
-      colorCondition: document.getElementById('colorCondition').value,
-      issues: allIssues,
-      missingParts: selectedMissingParts,
-      maxBudget: document.getElementById('maxBudget').value,
-      internalNotes: document.getElementById('internalNotes').value
-    };
-
-    if (!data.clientName || !data.clientPhone) {
-      alert("Kérlek add meg az Ügyfél nevét és telefonszámát!");
-      return;
+function submitWorkOrder() {
+    const saveBtn = document.getElementById('saveBtn');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerText = "⏳ Mentés...";
     }
 
-    document.getElementById('saveBtn').disabled = true;
-    document.getElementById('saveBtn').innerText = "Mentés...";
+    // Segédfüggvény: megkeresi az beviteli mezőt bármilyen lehetséges ID alapján
+    const getValue = (ids) => {
+        for (let id of ids) {
+            const el = document.getElementById(id);
+            if (el && el.value !== undefined && el.value !== '') {
+                return el.value.trim();
+            }
+        }
+        return '';
+    };
+
+    // Adatok kinyerése a HTML űrlapból (minden lehetséges meglévő ID-ra felkészülve)
+    const name = getValue(['clientName', 'ugyfelNev', 'inputClientName', 'name']);
+    const phone = getValue(['clientPhone', 'telefonszam', 'inputClientPhone', 'phone']);
+    const type = getValue(['machineType', 'markaTipus', 'inputMachineType', 'type']);
+    const sn = getValue(['serialNumber', 'gyariSzam', 'inputSerialNumber', 'sn']);
+    const cond = getValue(['condition', 'szinAllapot', 'inputCondition']);
+    const issues = getValue(['issues', 'hibatipusok', 'inputIssues', 'hiba']);
+    const missing = getValue(['missingParts', 'hianyzoTartozekok', 'inputMissingParts']);
+    const budget = getValue(['maxBudget', 'maxKeret', 'inputMaxBudget']) || 0;
+    const notes = getValue(['internalNotes', 'muhelyJegyzet', 'inputInternalNotes', 'jegyzet']);
+
+    // BIZTONSÁGI PAYLOAD: elküldjük angolul ÉS magyarul is
+    const payload = {
+        action: 'addOrder',
+        
+        // Angol kulcsok:
+        clientName: name,
+        clientPhone: phone,
+        machineType: type,
+        serialNumber: sn,
+        condition: cond,
+        issues: issues,
+        missingParts: missing,
+        maxBudget: Number(budget),
+        internalNotes: notes,
+        status: 'Átvéve',
+
+        // Magyar kulcsok (a Google Apps Script háttérhez):
+        ugyfelNev: name,
+        telefonszam: phone,
+        markaTipus: type,
+        gyariSzam: sn,
+        szinAllapot: cond,
+        hibatipusok: issues,
+        hianyzoTartozekok: missing,
+        maxKeret: Number(budget),
+        muhelyJegyzet: notes,
+        statusz: 'Átvéve'
+    };
 
     fetch(API_URL, {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'saveOrder', payload: data })
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
     })
     .then(res => res.json())
-    .then(res => {
-      if(res.success) {
-        alert("Sikeres mentés! Munkalapszám: " + res.id);
-        location.reload();
-      } else {
-        alert("Hiba történt a mentés során: " + (res.error || "Ismeretlen hiba"));
-        document.getElementById('saveBtn').disabled = false;
-        document.getElementById('saveBtn').innerText = "💾 Munkalap Mentése";
-      }
+    .then(result => {
+        alert("Munkalap sikeresen elmentve!");
+        
+        // Űrlap kiürítése mentés után
+        const form = document.getElementById('workOrderForm') || document.getElementById('addOrderForm') || document.querySelector('form');
+        if (form) form.reset();
+
+        // Munkalap lista azonnali frissítése
+        if (typeof loadOrders === 'function') loadOrders();
     })
     .catch(err => {
-      console.error(err);
-      alert("Hiba a hálózati kapcsolatban.");
-      document.getElementById('saveBtn').disabled = false;
-      document.getElementById('saveBtn').innerText = "💾 Munkalap Mentése";
+        console.error("Mentési hiba:", err);
+        alert("Hiba történt a mentéskor: " + err.message);
+    })
+    .finally(() => {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = "💾 Munkalap Mentése";
+        }
     });
-  }
-
+}
 // 4. GÉPEK LISTÁJÁNAK BETÖLTÉSE (SZŰRÉSSEL ÉS STATISZTIKÁVAL)
 function loadOrders() {
     const container = document.getElementById('ordersContainer');
