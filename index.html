@@ -459,10 +459,30 @@
       if (!res.ok) throw new Error("Hálózati hiba: " + res.status);
       return res.json();
     })
-    .then(orders => {
-      allOrdersData = orders || [];
-      updateStatistics();
-      renderOrdersList();
+    // ✅ ERRE ÍRD ÁT:
+.then(orders => {
+    const rawRows = (orders && orders.data) ? orders.data : [];
+    
+    allOrdersData = rawRows.slice(1).map((row, index) => ({
+        rowIndex: index + 2,
+        id: row[0] || '',
+        date: row[1] || '',
+        clientName: row[2] || '',
+        clientPhone: row[3] || '',
+        machineType: row[4] || '',
+        serialNumber: row[5] || '',
+        condition: row[6] || '',
+        issues: row[7] || '',
+        missingParts: row[8] || '',
+        maxBudget: row[9] || 0,
+        status: row[10] || 'Átvéve',
+        totalPrice: row[11] || 0,
+        internalNotes: row[12] || ''
+    }));
+
+    updateStatistics();
+    renderOrdersList();
+})
     })
     .catch(err => {
       console.error(err);
