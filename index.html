@@ -401,102 +401,135 @@ function submitWorkOrder() {
         saveBtn.innerText = "⏳ Mentés...";
     }
 
-    // Segédfüggvény egyetlen mező értékének beolvasására
-    const getVal = (ids) => {
-        for (let id of ids) {
+    const tabNew = document.getElementById('tab-new') || document;
+
+    // 1. Segédfüggvény: Mező keresése Címke (Label) szöveg alapján
+    const getValByLabel = (labelKeywords, fallbackIds) => {
+        // Először megpróbálja ID/Name alapján
+        for (let id of fallbackIds) {
             const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
             if (el && el.value !== undefined && el.value.trim() !== '') {
                 return el.value.trim();
             }
         }
-        return '';
-    };
-
-    // Segédfüggvény két külön mező összefűzésére (pl. Márka + Típus vagy Szín + Állapot)
-    const getCombined = (primaryIds, fallbackPart1Ids, fallbackPart2Ids) => {
-        const direct = getVal(primaryIds);
-        if (direct) return direct;
-        
-        const part1 = getVal(fallbackPart1Ids);
-        const part2 = getVal(fallbackPart2Ids);
-        if (part1 || part2) {
-            return [part1, part2].filter(Boolean).join(' ');
+        // Ha nincs meg ID alapján, megkeresi a szövegéhez tartozó Label-t
+        const labels = Array.from(tabNew.querySelectorAll('label, .form-label, h5, h6'));
+        for (let lbl of labels) {
+            const txt = (lbl.innerText || lbl.textContent || '').toLowerCase();
+            if (labelKeywords.some(kw => txt.includes(kw.toLowerCase()))) {
+                if (lbl.htmlFor) {
+                    const el = document.getElementById(lbl.htmlFor);
+                    if (el && el.value) return el.value.trim();
+                }
+                let parent = lbl.parentElement;
+                if (parent) {
+                    const inp = parent.querySelector('input, select, textarea');
+                    if (inp && inp.value) return inp.value.trim();
+                }
+                let next = lbl.nextElementSibling;
+                while (next) {
+                    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(next.tagName)) {
+                        if (next.value) return next.value.trim();
+                    }
+                    const inp = next.querySelector('input, select, textarea');
+                    if (inp && inp.value) return inp.value.trim();
+                    next = next.nextElementSibling;
+                }
+            }
         }
         return '';
     };
 
+    // 2. Segédfüggvény: Kijelölt gombok/badge-ek kigyűjtése a Címke alól
+    const getBadgesByLabel = (labelKeywords) => {
+        const selected = [];
+        const labels = Array.from(tabNew.querySelectorAll('label, .form-label, h5, h6'));
+        
+        for (let lbl of labels) {
+            const txt = (lbl.innerText || lbl.textContent || '').toLowerCase();
+            if (labelKeywords.some(kw => txt.includes(kw.toLowerCase()))) {
+                let nextContainer = lbl.nextElementSibling;
+                if (nextContainer) {
+                    const btns = nextContainer.querySelectorAll('button, .badge, .btn, span, a, div');
+                    btns.forEach(btn => {
+                        const cls = (btn.className || '').toLowerCase();
+                        const attrPressed = btn.getAttribute('aria-pressed');
+                        const attrSelected = btn.getAttribute('data-selected');
+                        
+                        const isSelected = cls.includes('active') || 
+                                           cls.includes('selected') || 
+                                           attrPressed === 'true' || 
+                                           attrSelected === 'true' ||
+                                           cls.includes('btn-warning') || 
+                                           cls.includes('btn-danger') || 
+                                           cls.includes('btn-success') || 
+                                           cls.includes('btn-primary') || 
+                                           cls.includes('bg-warning') || 
+                                           cls.includes('bg-danger');
+
+                        if (isSelected) {
+                            const btnText = (btn.innerText || btn.textContent || '').trim();
+                            if (btnText && !selected.includes(btnText) && btnText.length < 60) {
+                                selected.push(btnText);
+                            }
+                        }
+                    });
+                }
+            }
+        }
+        return selected.join(', ');
+    };
+
+    // --- MEZŐK BEOLVASÁSA ---
+
     // 1. Ügyfél neve
-    const name = getVal(['clientName', 'ugyfelNev', 'inputClientName', 'name', 'ugyfel_nev']);
+    const name = getValByLabel(['ügyfél', 'név', 'name'], ['clientName', 'ugyfelNev', 'inputClientName', 'name']);
 
     // 2. Telefonszám
-    const phone = getVal(['clientPhone', 'telefonszam', 'inputClientPhone', 'phone', 'telefon']);
+    const phone = getValByLabel(['telefon', 'mobil', 'phone'], ['clientPhone', 'telefonszam', 'inputClientPhone', 'phone']);
 
-    // 3. Márka / Típus (egyszerre vagy külön mezőkből: pl. marka + tipus)
-    const type = getCombined(
-        ['machineType', 'markaTipus', 'inputMachineType', 'type', 'gepTipus', 'marka_tipus'],
-        ['marka', 'inputMarka', 'brand'],
-        ['tipus', 'inputTipus', 'model']
-    );
+    // 3. Márka / Típus
+    const type = getValByLabel(['márka', 'típus', 'gép'], ['machineType', 'markaTipus', 'inputMachineType', 'type', 'marka']);
 
     // 4. Gyári szám (S/N)
-    const sn = getVal(['serialNumber', 'gyariSzam', 'inputSerialNumber', 'sn', 'serial', 'gyariszam']);
+    const sn = getValByLabel(['gyári', 's/n', 'serial'], ['serialNumber', 'gyariSzam', 'inputSerialNumber', 'sn']);
 
-    // 5. Szín / Állapot (egyszerre vagy külön: pl. szin + allapot)
-    const cond = getCombined(
-        ['condition', 'szinAllapot', 'inputCondition', 'allapot', 'szin_allapot'],
-        ['szin', 'inputSzin', 'color'],
-        ['allapot', 'inputAllapot', 'state']
-    );
+    // 5. Szín / Állapot
+    const cond = getValByLabel(['szín', 'állapot', 'szin', 'allapot', 'kinézet'], ['condition', 'szinAllapot', 'szin_allapot', 'inputCondition', 'szin', 'allapot']);
 
-    // 6. Hibatípusok / Hibajelenség
-    const issues = getVal(['issues', 'hibatipusok', 'inputIssues', 'hibajelenseg', 'hiba', 'hibak', 'kertMunka']);
+    // 6. Hibatípusok (Kijelölt gombok + szöveges mező)
+    const issuesBadges = getBadgesByLabel(['hiba', 'hibajelenség', 'kért munka']);
+    const issuesText = getValByLabel(['hibajelenség', 'kért munka'], ['issues', 'hibatipusok', 'inputIssues', 'hibajelenseg', 'hiba']);
+    const issues = [issuesBadges, issuesText].filter(Boolean).join(' | ');
 
-    // 7. Hiányzó tartozékok
-    const missing = getVal(['missingParts', 'hianyzoTartozekok', 'inputMissingParts', 'hianyzo', 'tartozekok', 'tartozek']);
+    // 7. Hiányzó tartozékok (Kijelölt gombok + szöveges mező)
+    const missingBadges = getBadgesByLabel(['hiányzó', 'tartozék']);
+    const missingText = getValByLabel(['hiányzó tartozék'], ['missingParts', 'hianyzoTartozekok', 'inputMissingParts', 'hianyzo']);
+    const missing = [missingBadges, missingText].filter(Boolean).join(' | ');
 
     // 8. Max keret
-    const budget = getVal(['maxBudget', 'maxKeret', 'inputMaxBudget', 'keret', 'budget']) || 0;
+    const budget = getValByLabel(['keret', 'max'], ['maxBudget', 'maxKeret', 'inputMaxBudget', 'keret']) || 0;
 
     // 9. Műhely jegyzet
-    const notes = getVal(['internalNotes', 'muhelyJegyzet', 'inputInternalNotes', 'jegyzet', 'notes', 'muhely_jegyzet']);
+    const notes = getValByLabel(['jegyzet', 'műhely', 'megjegyzés'], ['internalNotes', 'muhelyJegyzet', 'inputInternalNotes', 'jegyzet']);
 
-    // BIZTONSÁGI PAYLOAD: Az összes lehetséges kulcsnév-változatot elküldjük a Google Apps Scriptnek
+    // PAYLOAD ELKÜLDÉSE
     const payload = {
         action: 'addOrder',
-        
-        // Ügyfél neve (C oszlop)
-        clientName: name, ugyfelNev: name, ugyfel_nev: name, nev: name,
-        
-        // Telefonszám (D oszlop)
-        clientPhone: phone, telefonszam: phone, telefon: phone,
-        
-        // Márka / Típus (E oszlop)
-        machineType: type, markaTipus: type, marka_tipus: type, marka: type, tipus: type,
-        
-        // Gyári szám (F oszlop)
-        serialNumber: sn, gyariSzam: sn, gyariszam: sn, sn: sn,
-        
-        // Szín / Állapot (G oszlop)
-        condition: cond, szinAllapot: cond, szin_allapot: cond, allapot: cond, szin: cond,
-        
-        // Hibatípusok (H oszlop)
+        clientName: name, ugyfelNev: name,
+        clientPhone: phone, telefonszam: phone,
+        machineType: type, markaTipus: type,
+        serialNumber: sn, gyariSzam: sn,
+        condition: cond, szinAllapot: cond, szin_allapot: cond, szin: cond, allapot: cond,
         issues: issues, hibatipusok: issues, hiba: issues, hibak: issues, hibajelenseg: issues,
-        
-        // Hiányzó tartozékok (I oszlop)
-        missingParts: missing, hianyzoTartozekok: missing, hianyzo_tartozekok: missing, hianyzo: missing, tartozekok: missing,
-        
-        // Max keret (J oszlop)
-        maxBudget: Number(budget), maxKeret: Number(budget), max_keret: Number(budget), keret: Number(budget),
-        
-        // Státusz (K oszlop)
+        missingParts: missing, hianyzoTartozekok: missing, hianyzo: missing, tartozekok: missing,
+        maxBudget: Number(budget), maxKeret: Number(budget),
         status: 'Átvéve', statusz: 'Átvéve',
-        
-        // Végösszeg (L oszlop)
         totalPrice: 0, vegosszeg: 0,
-        
-        // Műhely jegyzet (M oszlop)
-        internalNotes: notes, muhelyJegyzet: notes, muhely_jegyzet: notes, jegyzet: notes
+        internalNotes: notes, muhelyJegyzet: notes
     };
+
+    console.log("Elküldött adatok:", payload);
 
     fetch(API_URL, {
         method: 'POST',
@@ -507,9 +540,10 @@ function submitWorkOrder() {
     .then(res => res.json())
     .then(result => {
         alert("Munkalap sikeresen elmentve!");
-        
         const form = document.getElementById('workOrderForm') || document.getElementById('addOrderForm') || document.querySelector('form');
         if (form) form.reset();
+
+        tabNew.querySelectorAll('.active, .selected').forEach(el => el.classList.remove('active', 'selected'));
 
         if (typeof loadOrders === 'function') loadOrders();
     })
@@ -674,23 +708,66 @@ function loadOrders() {
     container.innerHTML = html;
   }
 
-  function markAsReady(rowIndex, phone) {
-    let price = prompt("Add meg a fizetendő végösszeget (Ft):");
-    if (price === null) return;
+function markAsReady(rowIndex, phone) {
+    // 1. Bekérjük a végösszeget (vagy ha van modal/input meződ, kiolvassuk)
+    let priceInput = document.getElementById('finalPriceInput') || document.getElementById('priceInput');
+    let price = priceInput ? priceInput.value : prompt("Add meg a végösszeget (Ft):", "0");
+
+    if (price === null) return; // Ha a 'Mégse' gombra nyomott
+
+    const finalPrice = Number(price) || 0;
+
+    // BIZTONSÁGI PAYLOAD: Az összes lehetséges paraméternevet elküldjük
+    const payload = {
+        action: 'updateStatus',  // Vagy updateOrder / completeOrder
+        rowIndex: rowIndex,
+        id: rowIndex,
+        row: rowIndex,
+        munkalapId: rowIndex,
+        
+        status: 'Elkészült',
+        statusz: 'Elkészült',
+        
+        totalPrice: finalPrice,
+        vegosszeg: finalPrice,
+        osszeg: finalPrice
+    };
+
+    console.log("Státusz frissítés küldése:", payload);
 
     fetch(API_URL, {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'updateStatus', payload: { rowIndex: rowIndex, status: 'Elkészült', totalPrice: price } })
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
     })
     .then(res => res.json())
-    .then(() => {
-      let msg = generateSmsText(price);
-      window.location.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
-      loadOrders();
+    .then(result => {
+        alert("Munkalap sikeresen átállítva 'Elkészült' státuszra!");
+
+        // Ha van felugró ablak (Modal), bezárjuk
+        const modalEl = document.getElementById('priceModal') || document.getElementById('doneModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+        }
+
+        // Kártyák újratöltése
+        if (typeof loadOrders === 'function') {
+            loadOrders();
+        }
+
+        // SMS indítása ha van telefonszám
+        if (phone && phone !== 'undefined') {
+            const smsText = `Tisztelt Ügyfelünk! A szervizre leadott gép elkészült. Fizetendő végösszeg: ${finalPrice} Ft. Coffix Szerviz`;
+            window.location.href = `sms:${phone}?body=${encodeURIComponent(smsText)}`;
+        }
+    })
+    .catch(err => {
+        console.error("Státuszfrissítési hiba:", err);
+        alert("Hiba történt a mentés során: " + err.message);
     });
-  }
+}
 
   function markAsDone(rowIndex) {
     fetch(API_URL, {
